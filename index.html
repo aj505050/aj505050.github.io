@@ -3,307 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>激情牛牛 - 联机修复版</title>
+    <title>激情牛牛 - 完美同步版</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     <style>
         :root { --primary: #ffc107; --bg-dark: #121212; }
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { font-family: sans-serif; background: var(--bg-dark); color: #fff; height: 100vh; overflow: hidden; }
 
-        /* 大厅样式 */
+        /* 大厅 */
         #lobby { position: fixed; top:0; left:0; width:100%; height:100%; z-index:99; background: #000; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        #lobby.hidden { display: none; }
-        
         .panel { width: 90%; max-width: 320px; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
         .input-box { width: 100%; padding: 12px; margin: 10px 0; background: #333; border: 1px solid #555; color: white; border-radius: 8px; }
-        .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; transition:0.2s;}
-        .btn:active { transform: scale(0.95); }
+        .btn { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; }
         .btn-create { background: #ffc107; }
         .btn-join { background: #2196f3; color: white; }
         
-        /* 加载状态文字 */
-        .status-msg { font-size: 12px; text-align: center; margin-top: 10px; color: #aaa; min-height: 20px; }
-        .error-msg { color: #ff5252; }
+        /* 状态条 */
+        .status-bar { text-align: center; font-size: 14px; margin-bottom: 10px; color: #aaa; min-height: 20px; }
+        .status-active { color: #4caf50; font-weight: bold; }
 
-        /* 游戏界面 */
+        /* 游戏桌 */
         #game { display: none; flex-direction: column; height: 100%; }
         #game.active { display: flex; }
 
-        .header { padding: 10px; background: #222; display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px solid #333; }
+        .header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; font-size: 16px; border-bottom: 1px solid #333; }
         .table { flex: 1; background: radial-gradient(circle, #2e7d32, #1b5e20); position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
-        .zone { width: 100%; height: 140px; position: relative; display: flex; justify-content: center; align-items: center; }
-        .zone-label { position: absolute; font-size: 12px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 10px; color: #fff; }
-        .opponent-zone .zone-label { top: -10px; }
-        .my-zone .zone-label { bottom: -10px; }
+        .zone { width: 100%; height: 150px; position: relative; display: flex; justify-content: center; align-items: center; transition: 0.3s; }
+        .zone-label { position: absolute; font-size: 12px; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 12px; color: #fff; z-index: 2; }
+        .opponent-zone .zone-label { top: 0; }
+        .my-zone .zone-label { bottom: 0; }
 
-        /* 扑克牌 */
-        .card { width: 50px; height: 70px; background: white; border-radius: 4px; margin: 0 4px; display: flex; justify-content: center; align-items: center; font-weight: bold; box-shadow: 1px 1px 4px rgba(0,0,0,0.3); }
-        .card.red { color: red; } .card.black { color: black; }
-        .card.back { background: #b71c1c; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #c62828 10px); }
-        .card.back span { display: none; }
+        /* 卡牌 */
+        .card { width: 55px; height: 80px; background: white; border-radius: 5px; margin: 0 4px; display: flex; justify-content: center; align-items: center; font-weight: bold; position: relative; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); font-size: 18px; }
+        .card.red { color: #e91e63; } .card.black { color: #333; }
+        .card.back { background: #b71c1c; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #d32f2f 10px); border: 2px solid #fff; }
+        .card.back * { display: none; }
         
-        /* 结果徽章 */
-        .badge { position: absolute; background: gold; color: black; padding: 4px 10px; border-radius: 20px; font-weight: bold; opacity: 0; transform: scale(0); transition: 0.3s; z-index: 10; border: 2px solid white; }
-        .badge.show { opacity: 1; transform: scale(1); }
+        /* 结果 */
+        .badge { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0); background: linear-gradient(45deg, #FFD700, #FFA500); color: #5c3a00; padding: 5px 15px; border-radius: 20px; font-weight: 900; z-index: 20; border: 2px solid #fff; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); white-space: nowrap; }
+        .badge.show { transform:translate(-50%,-50%) scale(1.2); }
+        .badge.lose { background: #9e9e9e; color: #333; box-shadow: none; }
 
-        .controls { padding: 15px; background: #111; text-align: center; }
-        .game-btn { padding: 10px 30px; border-radius: 20px; border: none; font-size: 16px; font-weight: bold; background: #4caf50; color: white; width: 80%; }
-        .game-btn:disabled { background: #444; color: #888; }
+        /* 底部控制 */
+        .controls { padding: 20px; background: #111; text-align: center; border-top: 1px solid #333; }
+        .game-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; background: #2e7d32; color: white; transition: 0.2s; }
+        .game-btn:active { transform: scale(0.98); }
+        .game-btn:disabled { background: #333; color: #777; cursor: not-allowed; }
         
-        .room-id-display { font-family: monospace; color: #ffc107; font-size: 14px; margin: 10px 0; text-align: center; word-break: break-all; background:#000; padding:5px; border-radius:4px; border:1px dashed #666; user-select: text; }
+        .room-id-box { background: #000; color: #ffc107; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; word-break: break-all; border: 1px dashed #555; user-select: text; }
     </style>
 </head>
 <body>
 
     <div id="lobby">
-        <h1 style="color:var(--primary); margin-bottom:20px;">牛牛 (联机修复版)</h1>
+        <h1 style="color:var(--primary); margin-bottom:20px;">🐮 激情牛牛 V3</h1>
         <div class="panel">
-            <input type="text" id="nickname" class="input-box" placeholder="输入昵称 (必填)" maxlength="8">
+            <input type="text" id="nickname" class="input-box" placeholder="输入你的昵称">
+            <div id="lobby-msg" class="status-bar">准备就绪</div>
             
-            <div id="lobby-status" class="status-msg">准备就绪</div>
-
-            <hr style="border:0; border-top:1px solid #444; margin:15px 0;">
-            
-            <div id="create-section">
-                <button id="btn-create" class="btn btn-create" onclick="createRoom()">我是房主 (创建)</button>
-                <div id="my-room-id" class="room-id-display" style="display:none;"></div>
+            <div id="step-1">
+                <button class="btn btn-create" onclick="createRoom()">我是房主 (创建)</button>
+                <div style="text-align:center; margin:15px 0; color:#555;">- OR -</div>
+                <input type="text" id="target-id" class="input-box" placeholder="粘贴房主ID">
+                <button class="btn btn-join" onclick="joinRoom()">加入房间</button>
             </div>
 
-            <div style="text-align:center; margin:15px 0; color:#666;">- 或 -</div>
-
-            <div id="join-section">
-                <input type="text" id="target-id" class="input-box" placeholder="粘贴房主 ID">
-                <button id="btn-join" class="btn btn-join" onclick="joinRoom()">加入房间</button>
+            <div id="step-2" style="display:none;">
+                <p style="color:#aaa; font-size:12px;">长按复制下方ID发给好友：</p>
+                <div id="my-room-id" class="room-id-box"></div>
+                <p style="color:#4caf50; font-size:14px; text-align:center; margin-top:10px;">⏳ 等待好友加入...</p>
             </div>
         </div>
     </div>
 
     <div id="game">
         <div class="header">
-            <span>👤 <span id="p1-name">我</span></span>
-            <span style="color:#ffc107">VS</span>
-            <span>👤 <span id="p2-name">...</span></span>
+            <div>👤 <span id="p1-name">我</span></div>
+            <div style="color:#aaa; font-size:12px; line-height:24px;">VS</div>
+            <div>👤 <span id="p2-name">等待中...</span></div>
         </div>
+        
         <div class="table">
             <div class="zone opponent-zone">
                 <span class="zone-label" id="p2-label">对手</span>
-                <div class="badge" id="p2-badge"></div>
+                <div class="badge" id="p2-badge">牛牛</div>
                 <div id="p2-cards" style="display:flex"></div>
             </div>
-            <div style="font-size:40px; opacity:0.1; font-weight:900;">PK</div>
+
+            <div id="game-tip" style="color:rgba(255,255,255,0.2); font-weight:bold; font-size:24px;">PK</div>
+
             <div class="zone my-zone">
                 <span class="zone-label" id="p1-label">我</span>
-                <div class="badge" id="p1-badge"></div>
+                <div class="badge" id="p1-badge">牛七</div>
                 <div id="p1-cards" style="display:flex"></div>
             </div>
         </div>
+
         <div class="controls">
-            <div id="game-status" style="color:#aaa; font-size:12px; margin-bottom:10px;">等待开始...</div>
-            <button id="main-btn" class="game-btn" onclick="handleAction()">准备</button>
+            <div id="game-status" style="color:#aaa; font-size:14px; margin-bottom:12px;">等待开始...</div>
+            <button id="main-btn" class="game-btn" onclick="hostDeal()" disabled>等待连接</button>
         </div>
     </div>
 
 <script>
-    let peer = null;
-    let conn = null;
+    // --- 全局变量 ---
+    let peer, conn;
     let isHost = false;
-    let myName = "";
-    
-    // 检查库是否加载
-    window.onload = function() {
-        if (typeof Peer === 'undefined') {
-            updateStatus("错误：网络阻止了组件加载，请挂梯子或刷新！", true);
-            document.querySelectorAll('button').forEach(b => b.disabled = true);
-        }
-    };
+    let myName = "玩家";
+    let isRoundRunning = false;
 
-    function updateStatus(msg, isError = false) {
-        const el = document.getElementById('lobby-status');
+    // --- 1. 网络连接部分 ---
+    function log(msg, error=false) {
+        const el = document.getElementById('lobby-msg');
         el.innerText = msg;
-        el.className = 'status-msg ' + (isError ? 'error-msg' : '');
+        el.style.color = error ? '#ff5252' : '#aaa';
+    }
+
+    function initPeer(callback) {
+        log("正在连接服务器...");
+        try {
+            peer = new Peer(null, { debug: 2 });
+            peer.on('open', (id) => callback(id));
+            peer.on('error', (err) => log("错误: " + err.type, true));
+        } catch(e) { log("组件加载失败，请刷新", true); }
     }
 
     function createRoom() {
-        const name = document.getElementById('nickname').value;
-        if(!name) return updateStatus("请输入昵称！", true);
-        
-        myName = name;
+        myName = document.getElementById('nickname').value || "房主";
         isHost = true;
-        updateStatus("正在连接服务器创建房间...", false);
-        document.getElementById('btn-create').disabled = true;
-
         initPeer((id) => {
-            updateStatus("房间创建成功！请复制下方 ID 给好友", false);
-            const idBox = document.getElementById('my-room-id');
-            idBox.style.display = 'block';
-            idBox.innerText = id;
-            document.getElementById('join-section').style.display = 'none';
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('step-2').style.display = 'block';
+            document.getElementById('my-room-id').innerText = id;
+            
+            // 房主监听连接
+            peer.on('connection', (c) => {
+                conn = c;
+                setupGame();
+            });
         });
     }
 
     function joinRoom() {
-        const name = document.getElementById('nickname').value;
-        const targetId = document.getElementById('target-id').value.trim();
+        myName = document.getElementById('nickname').value || "挑战者";
+        const id = document.getElementById('target-id').value;
+        if(!id) return log("请输入房主ID", true);
         
-        if(!name) return updateStatus("请输入昵称！", true);
-        if(!targetId) return updateStatus("请输入房主 ID！", true);
-
-        myName = name;
         isHost = false;
-        updateStatus("正在尝试连接服务器...", false);
-        document.getElementById('btn-join').disabled = true;
-
         initPeer(() => {
-            updateStatus("服务器已连接，正在呼叫房主...", false);
-            connectToHost(targetId);
+            conn = peer.connect(id);
+            setupGame();
         });
     }
 
-    function initPeer(onOpen) {
-        try {
-            // 增加 config 提高连接成功率
-            peer = new Peer(null, {
-                debug: 2,
-                config: {'iceServers': [
-                    { url: 'stun:stun.l.google.com:19302' },
-                    { url: 'stun:stun1.l.google.com:19302' }
-                ]}
-            });
-        } catch(e) {
-            updateStatus("初始化失败：" + e.message, true);
-            return;
-        }
-
-        let isConnected = false;
-
-        // 设置超时，如果5秒连不上服务器，提示用户
-        setTimeout(() => {
-            if(!isConnected) {
-                updateStatus("连接服务器超时！请检查网络或使用 VPN", true);
-                document.getElementById('btn-join').disabled = false;
-                document.getElementById('btn-create').disabled = false;
-            }
-        }, 8000);
-
-        peer.on('open', (id) => {
-            isConnected = true;
-            console.log('My Peer ID:', id);
-            if(onOpen) onOpen(id);
-        });
-
-        peer.on('connection', (c) => {
-            if(!isHost) { c.close(); return; }
-            conn = c;
-            setupConn();
-        });
-
-        peer.on('error', (err) => {
-            console.error(err);
-            let msg = "未知错误";
-            if(err.type === 'peer-unavailable') msg = "找不到该房间，请检查 ID 是否正确！";
-            if(err.type === 'network') msg = "网络连接断开";
-            if(err.type === 'unavailable-id') msg = "ID 无效";
-            updateStatus("错误: " + msg, true);
-            // 恢复按钮
-            document.getElementById('btn-join').disabled = false;
-        });
-    }
-
-    function connectToHost(id) {
-        conn = peer.connect(id);
-        setupConn();
-    }
-
-    function setupConn() {
+    function setupGame() {
         conn.on('open', () => {
-            // 连接成功，进入游戏
+            // 连接成功，切换界面
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('game').classList.add('active');
             
-            // 初始化界面名字
+            // 初始化名字
             document.getElementById('p1-name').innerText = myName;
             document.getElementById('p1-label').innerText = myName;
             
-            // 发送我的名字给对方
+            // 交换名字
             conn.send({ type: 'NAME', name: myName });
 
-            if(!isHost) {
-                document.getElementById('main-btn').innerText = "等待房主发牌";
-                document.getElementById('main-btn').disabled = true;
-                document.getElementById('game-status').innerText = "已成功加入房间！";
+            // 设置按钮状态
+            const btn = document.getElementById('main-btn');
+            const status = document.getElementById('game-status');
+
+            if (isHost) {
+                btn.innerText = "⚡ 点击发牌";
+                btn.disabled = false;
+                btn.style.background = "#4caf50";
+                status.innerText = "✅ 玩家已连接，请发牌！";
+                status.className = "status-active";
             } else {
-                alert("玩家已加入！可以发牌了");
-                document.getElementById('p2-name').innerText = "玩家已连接";
+                btn.innerText = "⏳ 等待房主发牌";
+                btn.disabled = true;
+                btn.style.background = "#333";
+                status.innerText = "✅ 已连接，等待开局...";
             }
         });
 
         conn.on('data', handleData);
-        conn.on('close', () => alert("对方已断开连接"));
+        conn.on('close', () => alert("对方掉线了"));
     }
 
-    // --- 游戏逻辑 (复用之前的逻辑，精简版) ---
-    function handleAction() {
-        if(!isHost) return;
-        // 简单的发牌逻辑
+    // --- 2. 游戏核心逻辑 ---
+    
+    // 房主点击发牌
+    function hostDeal() {
+        if(!isHost || isRoundRunning) return;
+
+        // 生成牌堆
         const deck = createDeck();
-        const hostHand = deck.slice(0, 5);
-        const clientHand = deck.slice(5, 10);
+        const hostCards = deck.slice(0, 5);
+        const clientCards = deck.slice(5, 10);
+
+        const payload = { type: 'ROUND_START', host: hostCards, client: clientCards };
         
-        const payload = { type: 'DEAL', host: hostHand, client: clientHand };
-        conn.send(payload); // 发给客机
-        renderGame(hostHand, clientHand, false); // 渲染自己 (我是房主)
+        // 发送给对方
+        conn.send(payload);
+        // 自己开始
+        runRound(payload);
     }
 
+    // 处理接收到的数据
     function handleData(data) {
-        if(data.type === 'NAME') {
+        if (data.type === 'NAME') {
             document.getElementById('p2-name').innerText = data.name;
             document.getElementById('p2-label').innerText = data.name;
         }
-        if(data.type === 'DEAL') {
-            // 客机接收：client是我的牌，host是对手牌
-            renderGame(data.client, data.host, false); 
-            // 自动计算并显示结果(简化流程)
-            setTimeout(() => {
-                showAllCards(data.client, data.host);
-            }, 3000); // 3秒后自动开牌
+        if (data.type === 'ROUND_START') {
+            runRound(data);
         }
     }
 
-    function renderGame(myCards, opCards, showOp) {
-        renderHand('p1-cards', myCards, false);
-        renderHand('p2-cards', opCards, !showOp);
-        document.getElementById('game-status').innerText = "发牌中... 3秒后自动开牌";
-        // 存储数据用于开牌
-        document.getElementById('game').dataset.my = JSON.stringify(myCards);
-        document.getElementById('game').dataset.op = JSON.stringify(opCards);
+    // 执行回合 (双方通用)
+    function runRound(data) {
+        isRoundRunning = true;
+        const btn = document.getElementById('main-btn');
+        const status = document.getElementById('game-status');
+        
+        // 重置界面
+        document.querySelectorAll('.badge').forEach(b => b.classList.remove('show', 'lose'));
+        status.innerText = "💥 发牌中... 3秒后开牌";
+        btn.disabled = true;
+        btn.innerText = "🎲 正在计算...";
+
+        // 解析牌数据
+        // 如果我是房主：我的牌是 data.host，对手是 data.client
+        // 如果我是闲家：我的牌是 data.client，对手是 data.host
+        const myHand = isHost ? data.host : data.client;
+        const opHand = isHost ? data.client : data.host;
+
+        // 1. 渲染我的牌（明牌）
+        renderHand('p1-cards', myHand, false);
+        // 2. 渲染对手牌（暗牌）
+        renderHand('p2-cards', opHand, true);
+
+        // 3. 倒计时开牌
+        let count = 3;
+        const timer = setInterval(() => {
+            count--;
+            status.innerText = `⏱️ ${count} 秒后开牌...`;
+            if(count <= 0) {
+                clearInterval(timer);
+                showResult(myHand, opHand);
+            }
+        }, 1000);
     }
 
-    function showAllCards(myCards, opCards) { // 强制开牌
-        renderHand('p2-cards', opCards, false); // 翻开对手牌
+    // 开牌结算
+    function showResult(myHand, opHand) {
+        // 翻开对手的牌
+        renderHand('p2-cards', opHand, false);
+
+        // 计算结果
+        const myRes = calNiu(myHand);
+        const opRes = calNiu(opHand);
+
+        // 显示Badge
+        showBadge('p1-badge', myRes.text);
+        showBadge('p2-badge', opRes.text);
+
+        // 判定输赢
+        const status = document.getElementById('game-status');
+        const btn = document.getElementById('main-btn');
         
-        const res1 = getNiu(myCards);
-        const res2 = getNiu(opCards);
-        
-        showBadge('p1-badge', res1.text);
-        showBadge('p2-badge', res2.text);
-        
-        let msg = res1.weight > res2.weight ? "你赢了！" : "你输了...";
-        if(res1.weight == res2.weight) msg = "平局";
-        document.getElementById('game-status').innerText = msg;
+        if (myRes.weight > opRes.weight) {
+            status.innerText = "🎉 你赢了！大吉大利！";
+            status.style.color = "#ffeb3b";
+            document.getElementById('p2-badge').classList.add('lose');
+        } else if (myRes.weight < opRes.weight) {
+            status.innerText = "😭 你输了... 再来一把？";
+            status.style.color = "#ff5252";
+            document.getElementById('p1-badge').classList.add('lose');
+        } else {
+            status.innerText = "🤝 平局！和气生财";
+            status.style.color = "#fff";
+        }
+
+        isRoundRunning = false;
+        if(isHost) {
+            btn.innerText = "👉 点击开始下一局";
+            btn.disabled = false;
+            btn.style.background = "#ff9800";
+        } else {
+            btn.innerText = "⏳ 等待房主下一局";
+        }
     }
 
+    // --- 3. 辅助函数 ---
     function renderHand(id, cards, isBack) {
         const el = document.getElementById(id);
         el.innerHTML = '';
-        cards.forEach(c => {
+        cards.forEach((c, i) => {
             const div = document.createElement('div');
+            // 简单的动画延迟
+            div.style.animation = `deal 0.3s ease-out ${i*0.1}s backwards`;
             div.className = `card ${isBack ? 'back' : (['♥','♦'].includes(c.s)?'red':'black')}`;
-            if(!isBack) div.innerHTML = `<span>${c.v}</span><span>${c.s}</span>`;
+            if(!isBack) div.innerHTML = `<span>${c.v}</span><span style="font-size:14px">${c.s}</span>`;
             el.appendChild(div);
         });
     }
-
+    
     function showBadge(id, text) {
         const el = document.getElementById(id);
         el.innerText = text; el.classList.add('show');
@@ -314,18 +321,28 @@
         let d=[]; s.forEach(si=>v.forEach(vi=>d.push({s:si,v:vi})));
         return d.sort(()=>Math.random()-0.5);
     }
-    
-    function getNiu(hand) {
+
+    function calNiu(hand) {
+        // JQK=10, A=1
         let nums = hand.map(c => ['J','Q','K'].includes(c.v)?10:(c.v=='A'?1:parseInt(c.v)));
         let sum = nums.reduce((a,b)=>a+b,0), best=0;
+        
+        // 暴力算牛
         for(let i=0;i<3;i++) for(let j=i+1;j<4;j++) for(let k=j+1;k<5;k++)
             if((nums[i]+nums[j]+nums[k])%10===0) {
                 let r = (sum - (nums[i]+nums[j]+nums[k])) % 10;
                 if(r===0) r=10; if(r>best) best=r;
             }
-        const t=["没牛","牛一","牛二","牛三","牛四","牛五","牛六","牛七","牛八","牛九","牛牛"];
+        
+        const t=["没牛","牛一","牛二","牛三","牛四","牛五","牛六","牛七","牛八","牛九","🐮牛牛"];
         return {weight:best, text:t[best]};
     }
+    
+    // 注入CSS动画
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes deal { from { transform: translateY(-50px) scale(0.5); opacity:0; } to { transform: translateY(0) scale(1); opacity:1; } }`;
+    document.head.appendChild(style);
+
 </script>
 </body>
 </html>
